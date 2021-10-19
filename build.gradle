@@ -1,0 +1,33 @@
+plugins {
+    id 'java'
+    id "com.github.johnrengelman.shadow" version "7.1.0"
+}
+
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    maven {
+        name 'm2-dv8tion'
+        url 'https://m2.dv8tion.net/releases'
+    }
+}
+
+dependencies {
+    shadow "club.minnced:discord-webhooks:0.7.2"
+    shadow 'org.slf4j:slf4j-api:1.7.32'
+    shadow 'org.slf4j:slf4j-simple:1.7.32'
+    shadow 'net.dv8tion:JDA:4.3.0_334'
+    shadow 'org.jsoup:jsoup:1.14.3'
+    shadow 'commons-io:commons-io:20030203.000550'
+}
+
+shadowJar {
+    manifest {
+        attributes 'Main-Class': 'com.scorchedcode.ReportBot.ReportBot'
+    }
+    configurations = [project.configurations.shadow]
+    //minimize()
+}
