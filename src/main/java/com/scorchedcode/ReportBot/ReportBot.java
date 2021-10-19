@@ -40,6 +40,7 @@ public class ReportBot {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        getAPI().addEventListener(new ReactionListener());
     }
 
     private void handleConfig() {
