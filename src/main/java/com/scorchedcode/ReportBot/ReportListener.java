@@ -16,6 +16,7 @@ public class ReportListener extends ListenerAdapter {
             case "ban":
                 break;
             case "delete":
+                //Do something
                 break;
             case "lock":
                 break;
