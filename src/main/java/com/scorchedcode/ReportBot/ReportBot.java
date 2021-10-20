@@ -8,6 +8,8 @@ import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.Emoji;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.interactions.commands.OptionType;
+import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.Button;
 import net.dv8tion.jda.api.interactions.components.ButtonStyle;
@@ -51,6 +53,10 @@ public class ReportBot {
             e.printStackTrace();
         }
         getAPI().addEventListener(new ReactionListener());
+        getAPI().addEventListener(new ReportListener());
+        CommandData testCommand = new CommandData("test", "Testing slash command");
+        testCommand.addOption(OptionType.STRING, "input", "String to echo back", true);
+        getAPI().getGuilds().get(0).upsertCommand(testCommand).complete();
     }
 
     private void handleConfig() {
@@ -99,7 +105,7 @@ public class ReportBot {
                 .setFooter("Reported by " + reportingUsers.substring(0, reportingUsers.length()-1))
                 .setTimestamp(reportMessage.getTimeCreated())
                 .setDescription(reportMessage.getContentStripped());
-        SelectionMenu actions = SelectionMenu.create(reportMessage.getAuthor().getId())
+        SelectionMenu actions = SelectionMenu.create("menu:reportbot:" + rep.getId())
                 .setPlaceholder("Choose an action to perform for this report.")
                 .setRequiredRange(1, 1)
                 .addOption("Warn", "warn", "Warn " + reportMessage.getAuthor().getName() + " for Violation of Rules", Emoji.fromUnicode("\u26A0"))
@@ -110,7 +116,8 @@ public class ReportBot {
                 .build();
         reportRoom.sendMessageEmbeds(eb.build()).setActionRows(ActionRow.of(actions),
                 ActionRow.of(Button.of(ButtonStyle.LINK, reportMessage.getJumpUrl(), "View Message", Emoji.fromUnicode("\uD83D\uDD0D")),
-                        Button.of(ButtonStyle.PRIMARY, "history", "View User History", Emoji.fromUnicode("\uD83D\uDCD6")))).queue();
+                        Button.of(ButtonStyle.PRIMARY, "history", "View User History", Emoji.fromUnicode("\uD83D\uDCD6"))),
+                ActionRow.of(Button.danger("complete", "Under Review").asDisabled())).queue();
     }
 
     public static ReportBot getInstance() {

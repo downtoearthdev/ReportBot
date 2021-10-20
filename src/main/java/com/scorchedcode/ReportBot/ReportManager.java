@@ -2,6 +2,7 @@ package com.scorchedcode.ReportBot;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.UUID;
 
 public class ReportManager {
 
@@ -19,16 +20,24 @@ public class ReportManager {
         return instance;
     }
 
-    public void makeReport(String msgID, String channelID, String userID) {
-        getReport(msgID, channelID).addReportingUser(userID);
+    public void makeReport(String msgID, String channelID, String reportedUser, String userID) {
+        getReport(msgID, channelID, reportedUser).addReportingUser(userID);
     }
 
-    private Report getReport(String msgID, String channelID) {
+    public Report getReport(UUID id) {
+        for(Report report : reports) {
+            if(report.getId().equals(id))
+                    return report;
+        }
+        return null;
+    }
+
+    private Report getReport(String msgID, String channelID, String reportedUser) {
         for(Report report : reports) {
             if(report.getMessageID().equals(msgID))
                 return report;
         }
-        return new Report(msgID, channelID);
+        return new Report(msgID, channelID, reportedUser);
     }
 
     private void publishReport(Report report) {
@@ -43,11 +52,24 @@ public class ReportManager {
     class Report {
         private String messageID;
         private String channelID;
+        private String reportedUser;
+        private UUID id;
         private HashSet<String> reportingUsers = new HashSet<String>();
 
-        public Report(String msgID, String channelID) {
+        public Report(String msgID, String channelID, String reportedUser) {
             this.messageID = msgID;
             this.channelID = channelID;
+            this.reportedUser = reportedUser;
+            this.id = UUID.randomUUID();
+            reports.add(this);
+        }
+
+        public UUID getId() {
+            return id;
+        }
+
+        public String getReportedUser() {
+            return reportedUser;
         }
 
         public String getMessageID() {
