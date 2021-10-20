@@ -1,20 +1,30 @@
 package com.scorchedcode.ReportBot;
 
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.entities.Emoji;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.interactions.components.ActionRow;
+import net.dv8tion.jda.api.interactions.components.Button;
+import net.dv8tion.jda.api.interactions.components.ButtonStyle;
+import net.dv8tion.jda.api.interactions.components.selections.SelectionMenu;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.json.JSONObject;
 
 import javax.security.auth.login.LoginException;
 import java.io.*;
 import java.nio.file.Files;
+import java.util.Calendar;
 
 public class ReportBot {
     private static ReportBot instance;
     private String TOKEN;
     private String status;
+    private String reportRoomId;
     private JDA api;
 
     private ReportBot() {
@@ -62,17 +72,45 @@ public class ReportBot {
             JSONObject obj = new JSONObject(contents);
             TOKEN = obj.getString("token");
             status = obj.getString("status");
+            reportRoomId = obj.getString("report-room");
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        if (TOKEN == null || TOKEN.isEmpty() || status == null || status.isEmpty())
+        if (TOKEN == null || TOKEN.isEmpty() || status == null || status.isEmpty() || reportRoomId == null || reportRoomId.isEmpty())
             System.exit(0);
     }
 
     private void setStatus() {
         api.getPresence().setPresence(OnlineStatus.ONLINE, Activity.playing(status));
+    }
+
+    public void generateReportAesthetic(ReportManager.Report rep) {
+        TextChannel reportRoom = api.getTextChannelById(reportRoomId);
+        Message reportMessage = api.getTextChannelById(rep.getChannelID()).getHistoryAround(rep.getMessageID(), 5).complete().getMessageById(rep.getMessageID());
+        //reportRoom.sendMessage(reportMessage.getContentStripped()).complete();
+        String reportingUsers = "";
+        for(String user : rep.getReportingUsers())
+            reportingUsers = reportingUsers + user + ",";
+        EmbedBuilder eb = new EmbedBuilder();
+        eb.setAuthor(reportMessage.getAuthor().getAsTag(), null, reportMessage.getAuthor().getAvatarUrl())
+                .setTitle(null)
+                .setFooter("Reported by " + reportingUsers.substring(0, reportingUsers.length()-1))
+                .setTimestamp(reportMessage.getTimeCreated())
+                .setDescription(reportMessage.getContentStripped());
+        SelectionMenu actions = SelectionMenu.create(reportMessage.getAuthor().getId())
+                .setPlaceholder("Choose an action to perform for this report.")
+                .setRequiredRange(1, 1)
+                .addOption("Warn", "warn", "Warn " + reportMessage.getAuthor().getName() + " for Violation of Rules", Emoji.fromUnicode("\u26A0"))
+                .addOption("Ban User", "ban", "Ban " + reportMessage.getAuthor().getName() + " for Violation of Rules", Emoji.fromUnicode("\u26D4"))
+                .addOption("Delete Message", "delete", "Remove this message without further action", Emoji.fromUnicode("\u274C"))
+                .addOption("Lock User", "lock", "Lock " + reportMessage.getAuthor().getName() + " and create private thread", Emoji.fromUnicode("\uD83D\uDD12"))
+                .addOption("Completed", "complete", "Mark report as handled", Emoji.fromUnicode("\u2705"))
+                .build();
+        reportRoom.sendMessageEmbeds(eb.build()).setActionRows(ActionRow.of(actions),
+                ActionRow.of(Button.of(ButtonStyle.LINK, reportMessage.getJumpUrl(), "View Message", Emoji.fromUnicode("\uD83D\uDD0D")),
+                        Button.of(ButtonStyle.PRIMARY, "history", "View User History", Emoji.fromUnicode("\uD83D\uDCD6")))).queue();
     }
 
     public static ReportBot getInstance() {

@@ -11,12 +11,12 @@ public class ReactionListener extends ListenerAdapter {
 
     @Override
     public void onMessageReactionAdd(@NotNull MessageReactionAddEvent event) {
-        String warningAlias = event.getReactionEmote().getName();
+        String warningAlias = event.getReactionEmote().getAsReactionCode();
         //event.getChannel().sendMessage("Emoji alias: " +  warningAlias).queue();
-        if(!warningAlias.contains("warning"))
-            event.retrieveMessage().complete().clearReactions().queue();
-        else {
-
+        //event.getTextChannel().sendMessage(warningAlias).queue();
+        if(warningAlias.contains("\u26A0")) {
+            event.retrieveMessage().complete().clearReactions(event.getReactionEmote().getEmoji()).queue();
+            ReportManager.getInstance().makeReport(event.getMessageId(), event.getTextChannel().getId(), event.getUser().getAsTag());
         }
     }
 }

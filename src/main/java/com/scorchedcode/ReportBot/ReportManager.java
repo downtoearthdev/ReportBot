@@ -1,6 +1,7 @@
 package com.scorchedcode.ReportBot;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 public class ReportManager {
 
@@ -18,16 +19,20 @@ public class ReportManager {
         return instance;
     }
 
-    private void makeReport(String msgID) {
-
+    public void makeReport(String msgID, String channelID, String userID) {
+        getReport(msgID, channelID).addReportingUser(userID);
     }
 
-    private Report getReport(String msgID) {
+    private Report getReport(String msgID, String channelID) {
         for(Report report : reports) {
             if(report.getMessageID().equals(msgID))
                 return report;
         }
-        return new Report(msgID);
+        return new Report(msgID, channelID);
+    }
+
+    private void publishReport(Report report) {
+        ReportBot.getInstance().generateReportAesthetic(report);
     }
 
 
@@ -37,19 +42,30 @@ public class ReportManager {
 
     class Report {
         private String messageID;
-        private ArrayList<String> reportingUsers = new ArrayList<>();
-        private int timesreported = 0;
+        private String channelID;
+        private HashSet<String> reportingUsers = new HashSet<String>();
 
-        public Report(String msgID) {
+        public Report(String msgID, String channelID) {
             this.messageID = msgID;
+            this.channelID = channelID;
         }
 
         public String getMessageID() {
             return messageID;
         }
 
+        public String getChannelID() {
+            return channelID;
+        }
+
+        public HashSet<String> getReportingUsers() {
+            return reportingUsers;
+        }
+
         public void addReportingUser(String userID) {
             reportingUsers.add(userID);
+            if(reportingUsers.size() > 0)
+                publishReport(this);
         }
     }
 }
