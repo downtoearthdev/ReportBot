@@ -8,6 +8,7 @@ public class ReportManager {
 
     private static ReportManager instance;
     private ArrayList<Report> reports = new ArrayList<>();
+    private ArrayList<ReportUser> users = new ArrayList<>();
 
     private ReportManager() {
 
@@ -22,6 +23,10 @@ public class ReportManager {
 
     public void makeReport(String msgID, String channelID, String reportedUser, String userID) {
         getReport(msgID, channelID, reportedUser).addReportingUser(userID);
+    }
+
+    public ReportUser getReportUser(String id) {
+        return users.stream().filter(user -> id.equals(user.getUserID())).findAny().orElse(null);
     }
 
     public Report getReport(UUID id) {
@@ -45,21 +50,18 @@ public class ReportManager {
     }
 
 
-
-
-
-
     class Report {
         private String messageID;
         private String channelID;
-        private String reportedUser;
+        private ReportUser reportedUser;
+        private String reportID;
         private UUID id;
-        private HashSet<String> reportingUsers = new HashSet<String>();
+        private HashSet<String> reportingUsers = new HashSet<>();
 
         public Report(String msgID, String channelID, String reportedUser) {
             this.messageID = msgID;
             this.channelID = channelID;
-            this.reportedUser = reportedUser;
+            this.reportedUser = new ReportUser(reportedUser);
             this.id = UUID.randomUUID();
             reports.add(this);
         }
@@ -68,7 +70,7 @@ public class ReportManager {
             return id;
         }
 
-        public String getReportedUser() {
+        public ReportUser getReportedUser() {
             return reportedUser;
         }
 
@@ -80,14 +82,67 @@ public class ReportManager {
             return channelID;
         }
 
+        protected void setReportID(String id) {
+            reportID = id;
+        }
+
         public HashSet<String> getReportingUsers() {
             return reportingUsers;
         }
 
         public void addReportingUser(String userID) {
             reportingUsers.add(userID);
-            if(reportingUsers.size() > 0)
+            if(reportingUsers.size() > 0 && reportID == null)
                 publishReport(this);
+        }
+    }
+
+    class ReportUser {
+        private int bans = 0;
+        private int warns = 0;
+        private int locks = 0;
+        private int deletes = 0;
+        private String id;
+
+        ReportUser(String id) {
+            this.id = id;
+            users.add(this);
+        }
+
+        public String getUserID() {
+            return id;
+        }
+
+        public int getBans() {
+            return bans;
+        }
+
+        public void addBan() {
+            bans++;
+        }
+
+        public int getWarns() {
+            return warns;
+        }
+
+        public void addWarn() {
+            warns++;
+        }
+
+        public int getLocks() {
+            return locks;
+        }
+
+        public void addLock() {
+            locks++;
+        }
+
+        public int getDeletes() {
+            return deletes;
+        }
+
+        public void addDelete() {
+            deletes++;
         }
     }
 }

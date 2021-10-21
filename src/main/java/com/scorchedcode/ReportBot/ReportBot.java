@@ -54,9 +54,7 @@ public class ReportBot {
         }
         getAPI().addEventListener(new ReactionListener());
         getAPI().addEventListener(new ReportListener());
-        CommandData testCommand = new CommandData("test", "Testing slash command");
-        testCommand.addOption(OptionType.STRING, "input", "String to echo back", true);
-        getAPI().getGuilds().get(0).upsertCommand(testCommand).complete();
+        initializeCommands();
     }
 
     private void handleConfig() {
@@ -92,6 +90,12 @@ public class ReportBot {
         api.getPresence().setPresence(OnlineStatus.ONLINE, Activity.playing(status));
     }
 
+    private void initializeCommands() {
+        CommandData testCommand = new CommandData("history", "Displays discipline history for user");
+        testCommand.addOption(OptionType.STRING, "input", "String to echo back", true);
+        getAPI().getGuilds().get(0).upsertCommand(testCommand).complete();
+    }
+
     public void generateReportAesthetic(ReportManager.Report rep) {
         TextChannel reportRoom = api.getTextChannelById(reportRoomId);
         Message reportMessage = api.getTextChannelById(rep.getChannelID()).getHistoryAround(rep.getMessageID(), 5).complete().getMessageById(rep.getMessageID());
@@ -114,10 +118,11 @@ public class ReportBot {
                 .addOption("Lock User", "lock", "Lock " + reportMessage.getAuthor().getName() + " and create private thread", Emoji.fromUnicode("\uD83D\uDD12"))
                 .addOption("Completed", "complete", "Mark report as handled", Emoji.fromUnicode("\u2705"))
                 .build();
-        reportRoom.sendMessageEmbeds(eb.build()).setActionRows(ActionRow.of(actions),
+        Message msgReport = reportRoom.sendMessageEmbeds(eb.build()).setActionRows(ActionRow.of(actions),
                 ActionRow.of(Button.of(ButtonStyle.LINK, reportMessage.getJumpUrl(), "View Message", Emoji.fromUnicode("\uD83D\uDD0D")),
-                        Button.of(ButtonStyle.PRIMARY, "history", "View User History", Emoji.fromUnicode("\uD83D\uDCD6"))),
-                ActionRow.of(Button.danger("complete", "Under Review").asDisabled())).queue();
+                        Button.of(ButtonStyle.PRIMARY, "history:" + rep.getReportedUser().getUserID(), "View User History", Emoji.fromUnicode("\uD83D\uDCD6"))),
+                ActionRow.of(Button.danger("complete", "Under Review").asDisabled())).complete();
+        rep.setReportID(msgReport.getId());
     }
 
     public static ReportBot getInstance() {
