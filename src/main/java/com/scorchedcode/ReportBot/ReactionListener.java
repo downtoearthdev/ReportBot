@@ -16,7 +16,7 @@ public class ReactionListener extends ListenerAdapter {
         //event.getTextChannel().sendMessage(warningAlias).queue();
         if(warningAlias.contains("\u26A0")) {
             event.retrieveMessage().complete().clearReactions(event.getReactionEmote().getEmoji()).queue();
-            ReportManager.getInstance().makeReport(event.getMessageId(), event.getTextChannel().getId(), event.retrieveMessage().complete().getAuthor().getId(), event.getUser().getAsTag());
+            ReportManager.getInstance().makeReport(event.getMessageId(), event.getTextChannel().getId(), event.retrieveMessage().complete().getAuthor().getId(), event.getUser().getId());
         }
     }
 }

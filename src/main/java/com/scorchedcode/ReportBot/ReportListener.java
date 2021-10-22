@@ -51,6 +51,8 @@ public class ReportListener extends ListenerAdapter {
             switch (option.getValue()) {
                 case "warn":
                     event.reply("PLACEHOLDER: Warned " + userName).setEphemeral(true).queue();
+                    report.setResult(ReportAction.WARN, event.getMember().getId(), "PLACEHOLDER");
+                    ReportBot.getInstance().logAction(report);
                     report.getReportedUser().addWarn();
                     break;
                 case "ban":
@@ -59,6 +61,8 @@ public class ReportListener extends ListenerAdapter {
                     event.getMessage().editMessageComponents(ActionRow.of(event.getMessage().getActionRows().get(1).getButtons().get(0).asEnabled(),
                                     event.getMessage().getActionRows().get(1).getButtons().get(1).asEnabled()),
                             ActionRow.of(event.getMessage().getActionRows().get(2).getButtons().get(0).withStyle(ButtonStyle.SUCCESS).withLabel("Banned by " + event.getUser().getAsTag()))).complete();
+                    report.setResult(ReportAction.BAN, event.getMember().getId(), "PLACEHOLDER");
+                    ReportBot.getInstance().logAction(report);
                     report.getReportedUser().addBan();
                     break;
                 case "delete":
@@ -67,10 +71,14 @@ public class ReportListener extends ListenerAdapter {
                     event.getMessage().editMessageComponents(ActionRow.of(event.getMessage().getActionRows().get(1).getButtons().get(0).asDisabled(),
                             event.getMessage().getActionRows().get(1).getButtons().get(1).asEnabled()),
                             ActionRow.of(event.getMessage().getActionRows().get(2).getButtons().get(0).withStyle(ButtonStyle.SUCCESS).withLabel("Deleted by " + event.getUser().getAsTag()))).complete();
+                    report.setResult(ReportAction.DELETE, event.getMember().getId(), null);
+                    ReportBot.getInstance().logAction(report);
                     report.getReportedUser().addDelete();
                     break;
                 case "lock":
                     event.reply("PLACEHOLDER: Jailed " + userName).setEphemeral(true).queue();
+                    report.setResult(ReportAction.LOCK, event.getMember().getId(), null);
+                    ReportBot.getInstance().logAction(report);
                     report.getReportedUser().addLock();
                     break;
                 case "complete":
@@ -78,8 +86,11 @@ public class ReportListener extends ListenerAdapter {
                     event.getMessage().editMessageComponents(ActionRow.of(event.getMessage().getActionRows().get(1).getButtons().get(0).asEnabled(),
                             event.getMessage().getActionRows().get(1).getButtons().get(1).asEnabled()),
                             ActionRow.of(event.getMessage().getActionRows().get(2).getButtons().get(0).withStyle(ButtonStyle.SUCCESS).withLabel("Completed by " + event.getUser().getAsTag()))).complete();
+                    ReportBot.getInstance().logAction(report);
+                    report.setResult(ReportAction.COMPLETE, event.getMember().getId(), null);
                     break;
             }
+            report.setActionAdmin(event.getMember().getUser().getAsTag());
         }
     }
 }

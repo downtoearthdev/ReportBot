@@ -20,13 +20,13 @@ import org.json.JSONObject;
 import javax.security.auth.login.LoginException;
 import java.io.*;
 import java.nio.file.Files;
-import java.util.Calendar;
 
 public class ReportBot {
     private static ReportBot instance;
     private String TOKEN;
     private String status;
     private String reportRoomId;
+    private String logRoomId;
     private JDA api;
 
     private ReportBot() {
@@ -77,12 +77,13 @@ public class ReportBot {
             TOKEN = obj.getString("token");
             status = obj.getString("status");
             reportRoomId = obj.getString("report-room");
+            logRoomId = obj.getString("log-room");
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        if (TOKEN == null || TOKEN.isEmpty() || status == null || status.isEmpty() || reportRoomId == null || reportRoomId.isEmpty())
+        if (TOKEN == null || TOKEN.isEmpty() || status == null || status.isEmpty() || reportRoomId == null || reportRoomId.isEmpty() || logRoomId == null || logRoomId.isEmpty())
             System.exit(0);
     }
 
@@ -100,13 +101,10 @@ public class ReportBot {
         TextChannel reportRoom = api.getTextChannelById(reportRoomId);
         Message reportMessage = api.getTextChannelById(rep.getChannelID()).getHistoryAround(rep.getMessageID(), 5).complete().getMessageById(rep.getMessageID());
         //reportRoom.sendMessage(reportMessage.getContentStripped()).complete();
-        String reportingUsers = "";
-        for(String user : rep.getReportingUsers())
-            reportingUsers = reportingUsers + user + ",";
         EmbedBuilder eb = new EmbedBuilder();
         eb.setAuthor(reportMessage.getAuthor().getAsTag(), null, reportMessage.getAuthor().getAvatarUrl())
                 .setTitle(null)
-                .setFooter("Reported by " + reportingUsers.substring(0, reportingUsers.length()-1))
+                .setFooter(null)
                 .setTimestamp(reportMessage.getTimeCreated())
                 .setDescription(reportMessage.getContentStripped());
         SelectionMenu actions = SelectionMenu.create("menu:reportbot:" + rep.getId())
@@ -123,12 +121,45 @@ public class ReportBot {
                         Button.of(ButtonStyle.PRIMARY, "history:" + rep.getReportedUser().getUserID(), "View User History", Emoji.fromUnicode("\uD83D\uDCD6"))),
                 ActionRow.of(Button.danger("complete", "Under Review").asDisabled())).complete();
         rep.setReportID(msgReport.getId());
+        logAction(rep);
     }
 
     public static ReportBot getInstance() {
         if (instance == null)
             instance = new ReportBot();
         return instance;
+    }
+
+    protected void logAction(ReportManager.Report report) {
+        TextChannel logRoom = getAPI().getTextChannelById(logRoomId);
+        String logAdmin = (report.getActionAdmin() != null) ? logRoom.getGuild().getMemberById(report.getActionAdmin()).getUser().getAsTag() : null;
+        String outputText = (report.getActionAdmin() != null) ? "Report-System\nFor: " + logRoom.getGuild().getMemberById(report.getReportedUser().getUserID()).getUser().getAsTag() + "\nFrom: " +
+                logRoom.getGuild().getMemberById(report.getActionAdmin()).getUser().getAsTag() +"\nAction taken: "  : null;
+        switch(report.getResultAction()) {
+            case BAN:
+                outputText+="Banned by " + logAdmin + "\nReason: " + report.getResultReason();
+                break;
+            case WARN:
+                outputText+="Warned by " + logAdmin + "\nReason: " + report.getResultReason();
+                break;
+            case DELETE:
+                outputText+="Message deleted by " + logAdmin;
+                break;
+            case COMPLETE:
+                outputText+="Completed by " + logAdmin;
+                break;
+            case LOCK:
+                outputText+="Private discussion thread created by " + logAdmin;
+                break;
+            case UNKNOWN:
+                String reportingUsers = "";
+                for(String user : report.getReportingUsers())
+                    reportingUsers+=reportingUsers + logRoom.getGuild().getMemberById(user).getUser().getAsTag() + ",";
+                outputText = "Report-System\n Report generated for: " + logRoom.getGuild().getMemberById(report.getReportedUser().getUserID()).getUser().getAsTag() + "\nReported by: " +
+                        reportingUsers.substring(0, reportingUsers.length()-1);
+                break;
+        }
+        logRoom.sendMessage(outputText).queue();
     }
 
     protected JDA getAPI() {

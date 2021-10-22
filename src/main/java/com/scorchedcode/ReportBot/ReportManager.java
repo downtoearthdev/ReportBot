@@ -54,7 +54,10 @@ public class ReportManager {
         private String messageID;
         private String channelID;
         private ReportUser reportedUser;
+        private String actionAdmin;
         private String reportID;
+        private String banWarnReason;
+        private ReportAction resultAction = ReportAction.UNKNOWN;
         private UUID id;
         private HashSet<String> reportingUsers = new HashSet<>();
 
@@ -84,6 +87,28 @@ public class ReportManager {
 
         protected void setReportID(String id) {
             reportID = id;
+        }
+
+        protected void setActionAdmin(String id) {
+            actionAdmin = id;
+        }
+
+        protected String getActionAdmin() {
+            return actionAdmin;
+        }
+
+        protected ReportAction getResultAction() {
+            return resultAction;
+        }
+
+        protected String getResultReason() {
+            return banWarnReason;
+        }
+
+        protected void setResult(ReportAction resultAction, String admin, String reason) {
+            this.resultAction = resultAction;
+            actionAdmin = admin;
+            banWarnReason = reason;
         }
 
         public HashSet<String> getReportingUsers() {
