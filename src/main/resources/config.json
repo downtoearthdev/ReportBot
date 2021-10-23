@@ -2,5 +2,10 @@
   "token": "",
   "status": "",
   "report-room": "",
-  "log-room": "";
+  "log-room": "",
+  "non-report-log-room": "",
+  "mod-role-id": "",
+  "db-url": "jdbc:mysql://",
+  "db-user": "",
+  "db-password": ""
 }

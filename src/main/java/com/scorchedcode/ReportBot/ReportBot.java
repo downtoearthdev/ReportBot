@@ -27,6 +27,10 @@ public class ReportBot {
     private String status;
     private String reportRoomId;
     private String logRoomId;
+    private String nonReportRoomId;
+    protected static String sqlURL;
+    protected static String dbUser;
+    protected static String dbPassword;
     private JDA api;
 
     private ReportBot() {
@@ -37,6 +41,7 @@ public class ReportBot {
         ReportBot bot = ReportBot.getInstance();
         bot.initDiscordBot();
         bot.setStatus();
+        ReportDB.getInstance();
     }
 
 
@@ -54,6 +59,7 @@ public class ReportBot {
         }
         getAPI().addEventListener(new ReactionListener());
         getAPI().addEventListener(new ReportListener());
+        getAPI().addEventListener(new UserActivityListener());
         initializeCommands();
     }
 
@@ -78,12 +84,17 @@ public class ReportBot {
             status = obj.getString("status");
             reportRoomId = obj.getString("report-room");
             logRoomId = obj.getString("log-room");
+            nonReportRoomId = obj.getString("non-report-log-room");
+            sqlURL = obj.getString("db-url");
+            dbUser = obj.getString("db-user");
+            dbPassword = obj.getString("db-password");
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        if (TOKEN == null || TOKEN.isEmpty() || status == null || status.isEmpty() || reportRoomId == null || reportRoomId.isEmpty() || logRoomId == null || logRoomId.isEmpty())
+        if (TOKEN == null || TOKEN.isEmpty() || status == null || status.isEmpty() || reportRoomId == null || reportRoomId.isEmpty() || logRoomId == null || logRoomId.isEmpty() ||
+                sqlURL == null || sqlURL.isEmpty() || dbUser == null || dbUser.isEmpty() || dbPassword == null || dbPassword.isEmpty() || nonReportRoomId == null || nonReportRoomId.isEmpty())
             System.exit(0);
     }
 
@@ -118,7 +129,7 @@ public class ReportBot {
                 .build();
         Message msgReport = reportRoom.sendMessageEmbeds(eb.build()).setActionRows(ActionRow.of(actions),
                 ActionRow.of(Button.of(ButtonStyle.LINK, reportMessage.getJumpUrl(), "View Message", Emoji.fromUnicode("\uD83D\uDD0D")),
-                        Button.of(ButtonStyle.PRIMARY, "history:" + rep.getReportedUser().getUserID(), "View User History", Emoji.fromUnicode("\uD83D\uDCD6"))),
+                        Button.of(ButtonStyle.PRIMARY, "history:" + rep.getReportedUser(), "View User History", Emoji.fromUnicode("\uD83D\uDCD6"))),
                 ActionRow.of(Button.danger("complete", "Under Review").asDisabled())).complete();
         rep.setReportID(msgReport.getId());
         logAction(rep);
@@ -130,10 +141,28 @@ public class ReportBot {
         return instance;
     }
 
+    protected void warnBanUser(String userId, String warning, boolean ban) {
+
+    }
+
+    protected void lockUser(ReportManager.Report report) {
+
+    }
+    protected void logAction(String string) {
+        TextChannel logNonReportRoom = getAPI().getTextChannelById(nonReportRoomId);
+        switch (string) {
+            case "left":
+                break;
+            default:
+                logNonReportRoom.sendMessage(string).queue();
+        }
+
+    }
+
     protected void logAction(ReportManager.Report report) {
         TextChannel logRoom = getAPI().getTextChannelById(logRoomId);
         String logAdmin = (report.getActionAdmin() != null) ? logRoom.getGuild().getMemberById(report.getActionAdmin()).getUser().getAsTag() : null;
-        String outputText = (report.getActionAdmin() != null) ? "Report-System\nFor: " + logRoom.getGuild().getMemberById(report.getReportedUser().getUserID()).getUser().getAsTag() + "\nFrom: " +
+        String outputText = (report.getActionAdmin() != null) ? "Report-System\nFor: " + logRoom.getGuild().getMemberById(report.getReportedUser()).getUser().getAsTag() + "\nFrom: " +
                 logRoom.getGuild().getMemberById(report.getActionAdmin()).getUser().getAsTag() +"\nAction taken: "  : null;
         switch(report.getResultAction()) {
             case BAN:
@@ -155,7 +184,7 @@ public class ReportBot {
                 String reportingUsers = "";
                 for(String user : report.getReportingUsers())
                     reportingUsers+=reportingUsers + logRoom.getGuild().getMemberById(user).getUser().getAsTag() + ",";
-                outputText = "Report-System\n Report generated for: " + logRoom.getGuild().getMemberById(report.getReportedUser().getUserID()).getUser().getAsTag() + "\nReported by: " +
+                outputText = "Report-System\n Report generated for: " + logRoom.getGuild().getMemberById(report.getReportedUser()).getUser().getAsTag() + "\nReported by: " +
                         reportingUsers.substring(0, reportingUsers.length()-1);
                 break;
         }

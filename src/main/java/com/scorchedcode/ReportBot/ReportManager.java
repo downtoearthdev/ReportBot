@@ -3,12 +3,13 @@ package com.scorchedcode.ReportBot;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class ReportManager {
 
     private static ReportManager instance;
     private ArrayList<Report> reports = new ArrayList<>();
-    private ArrayList<ReportUser> users = new ArrayList<>();
+    //private ArrayList<ReportUser> users = new ArrayList<>();
 
     private ReportManager() {
 
@@ -25,8 +26,20 @@ public class ReportManager {
         getReport(msgID, channelID, reportedUser).addReportingUser(userID);
     }
 
-    public ReportUser getReportUser(String id) {
-        return users.stream().filter(user -> id.equals(user.getUserID())).findAny().orElse(null);
+    public ArrayList<Integer> getReportCounts(String userID) {
+        ArrayList<Integer> countList = new ArrayList<>();
+        countList.add(reports.stream().filter(warn -> warn.getResultAction() == ReportAction.WARN).toArray().length);
+        countList.add(reports.stream().filter(lock -> lock.getResultAction() == ReportAction.LOCK).toArray().length);
+        countList.add(reports.stream().filter(delete -> delete.getResultAction() == ReportAction.DELETE).toArray().length);
+        countList.add(reports.stream().filter(ban -> ban.getResultAction() == ReportAction.BAN).toArray().length);
+        countList.add(reports.stream().filter(complete -> complete.getResultAction() == ReportAction.COMPLETE).toArray().length);
+        return countList;
+    }
+
+    public ArrayList<Report> getReports(String userID) {
+        ArrayList<Report> reportList = new ArrayList<>();
+        reportList.addAll(reports.stream().filter(rep -> rep.getReportedUser().equals(userID)).collect(Collectors.toList()));
+        return reportList;
     }
 
     public Report getReport(UUID id) {
@@ -50,12 +63,12 @@ public class ReportManager {
     }
 
 
-    class Report {
+    class Report implements DBSerializable{
         private String messageID;
         private String channelID;
-        private ReportUser reportedUser;
+        private String reportedUser;
         private String actionAdmin;
-        private String reportID;
+        private String reportID = null;
         private String banWarnReason;
         private ReportAction resultAction = ReportAction.UNKNOWN;
         private UUID id;
@@ -64,16 +77,17 @@ public class ReportManager {
         public Report(String msgID, String channelID, String reportedUser) {
             this.messageID = msgID;
             this.channelID = channelID;
-            this.reportedUser = new ReportUser(reportedUser);
+            this.reportedUser = reportedUser;
             this.id = UUID.randomUUID();
             reports.add(this);
+            serialize();
         }
 
         public UUID getId() {
             return id;
         }
 
-        public ReportUser getReportedUser() {
+        public String getReportedUser() {
             return reportedUser;
         }
 
@@ -87,10 +101,15 @@ public class ReportManager {
 
         protected void setReportID(String id) {
             reportID = id;
+            serialize();
+        }
+        protected String getReportID() {
+            return reportID;
         }
 
         protected void setActionAdmin(String id) {
             actionAdmin = id;
+            serialize();
         }
 
         protected String getActionAdmin() {
@@ -109,6 +128,7 @@ public class ReportManager {
             this.resultAction = resultAction;
             actionAdmin = admin;
             banWarnReason = reason;
+            serialize();
         }
 
         public HashSet<String> getReportingUsers() {
@@ -120,54 +140,9 @@ public class ReportManager {
             if(reportingUsers.size() > 0 && reportID == null)
                 publishReport(this);
         }
-    }
 
-    class ReportUser {
-        private int bans = 0;
-        private int warns = 0;
-        private int locks = 0;
-        private int deletes = 0;
-        private String id;
-
-        ReportUser(String id) {
-            this.id = id;
-            users.add(this);
-        }
-
-        public String getUserID() {
-            return id;
-        }
-
-        public int getBans() {
-            return bans;
-        }
-
-        public void addBan() {
-            bans++;
-        }
-
-        public int getWarns() {
-            return warns;
-        }
-
-        public void addWarn() {
-            warns++;
-        }
-
-        public int getLocks() {
-            return locks;
-        }
-
-        public void addLock() {
-            locks++;
-        }
-
-        public int getDeletes() {
-            return deletes;
-        }
-
-        public void addDelete() {
-            deletes++;
+        public void serialize() {
+            ReportDB.getInstance().serializeDB(this);
         }
     }
 }
