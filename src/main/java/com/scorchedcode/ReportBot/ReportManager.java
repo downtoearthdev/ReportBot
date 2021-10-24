@@ -22,17 +22,21 @@ public class ReportManager {
         return instance;
     }
 
+    public void loadFromPersistance(UUID id, String postID, String msgID, String chanID, String modID, String reportedID, ReportAction action, String reason) {
+       new Report(id, postID, msgID, chanID, modID, reportedID, action, reason);
+    }
+
     public void makeReport(String msgID, String channelID, String reportedUser, String userID) {
         getReport(msgID, channelID, reportedUser).addReportingUser(userID);
     }
 
     public ArrayList<Integer> getReportCounts(String userID) {
         ArrayList<Integer> countList = new ArrayList<>();
-        countList.add(reports.stream().filter(warn -> warn.getResultAction() == ReportAction.WARN).toArray().length);
-        countList.add(reports.stream().filter(lock -> lock.getResultAction() == ReportAction.LOCK).toArray().length);
-        countList.add(reports.stream().filter(delete -> delete.getResultAction() == ReportAction.DELETE).toArray().length);
-        countList.add(reports.stream().filter(ban -> ban.getResultAction() == ReportAction.BAN).toArray().length);
-        countList.add(reports.stream().filter(complete -> complete.getResultAction() == ReportAction.COMPLETE).toArray().length);
+        countList.add(reports.stream().filter(warn -> warn.getResultAction() == ReportAction.WARN).filter(user -> user.getReportedUser().equals(userID)).toArray().length);
+        countList.add(reports.stream().filter(lock -> lock.getResultAction() == ReportAction.LOCK).filter(user -> user.getReportedUser().equals(userID)).toArray().length);
+        countList.add(reports.stream().filter(delete -> delete.getResultAction() == ReportAction.DELETE).filter(user -> user.getReportedUser().equals(userID)).toArray().length);
+        countList.add(reports.stream().filter(ban -> ban.getResultAction() == ReportAction.BAN).filter(user -> user.getReportedUser().equals(userID)).toArray().length);
+        countList.add(reports.stream().filter(complete -> complete.getResultAction() == ReportAction.COMPLETE).filter(user -> user.getReportedUser().equals(userID)).toArray().length);
         return countList;
     }
 
@@ -81,6 +85,18 @@ public class ReportManager {
             this.id = UUID.randomUUID();
             reports.add(this);
             serialize();
+        }
+
+        private Report(UUID id, String postID, String msgID, String chanID, String modID, String reportedID, ReportAction action, String reason) {
+            this.id = id;
+            this.reportID = postID;
+            this.messageID = msgID;
+            this.channelID = chanID;
+            this.actionAdmin = modID;
+            this.reportedUser = reportedID;
+            this.resultAction = action;
+            this.banWarnReason = reason;
+            reports.add(this);
         }
 
         public UUID getId() {

@@ -1,13 +1,7 @@
 package com.scorchedcode.ReportBot;
 
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.OnlineStatus;
-import net.dv8tion.jda.api.entities.Activity;
-import net.dv8tion.jda.api.entities.Emoji;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.*;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
@@ -18,16 +12,20 @@ import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.json.JSONObject;
 
 import javax.security.auth.login.LoginException;
+import java.awt.*;
 import java.io.*;
 import java.nio.file.Files;
+import java.util.HashMap;
 
 public class ReportBot {
     private static ReportBot instance;
     private String TOKEN;
     private String status;
-    private String reportRoomId;
+    protected static String reportRoomId;
     private String logRoomId;
-    private String nonReportRoomId;
+    protected static String nonReportRoomId;
+    private String lockRoomId;
+    protected static HashMap<String, Role[]> lockedCache = new HashMap<>();
     protected static String sqlURL;
     protected static String dbUser;
     protected static String dbPassword;
@@ -85,6 +83,7 @@ public class ReportBot {
             reportRoomId = obj.getString("report-room");
             logRoomId = obj.getString("log-room");
             nonReportRoomId = obj.getString("non-report-log-room");
+            lockRoomId = obj.getString("lock-channel");
             sqlURL = obj.getString("db-url");
             dbUser = obj.getString("db-user");
             dbPassword = obj.getString("db-password");
@@ -94,7 +93,8 @@ public class ReportBot {
             e.printStackTrace();
         }
         if (TOKEN == null || TOKEN.isEmpty() || status == null || status.isEmpty() || reportRoomId == null || reportRoomId.isEmpty() || logRoomId == null || logRoomId.isEmpty() ||
-                sqlURL == null || sqlURL.isEmpty() || dbUser == null || dbUser.isEmpty() || dbPassword == null || dbPassword.isEmpty() || nonReportRoomId == null || nonReportRoomId.isEmpty())
+                sqlURL == null || sqlURL.isEmpty() || dbUser == null || dbUser.isEmpty() || dbPassword == null || dbPassword.isEmpty() || nonReportRoomId == null || nonReportRoomId.isEmpty()
+                || lockRoomId == null || lockRoomId.isEmpty())
             System.exit(0);
     }
 
@@ -117,7 +117,7 @@ public class ReportBot {
                 .setTitle(null)
                 .setFooter(null)
                 .setTimestamp(reportMessage.getTimeCreated())
-                .setDescription(reportMessage.getContentStripped());
+                .setDescription(reportMessage.getContentDisplay());
         SelectionMenu actions = SelectionMenu.create("menu:reportbot:" + rep.getId())
                 .setPlaceholder("Choose an action to perform for this report.")
                 .setRequiredRange(1, 1)
@@ -146,8 +146,18 @@ public class ReportBot {
     }
 
     protected void lockUser(ReportManager.Report report) {
-
+        TextChannel lockChannel = getAPI().getTextChannelById(lockRoomId);
+        Member lockedUser = lockChannel.getGuild().getMemberById(report.getReportedUser());
+        Role tempRole = lockChannel.getGuild().createRole().setColor(Color.RED).setName(lockedUser.getEffectiveName()).complete();
+        lockedCache.put(report.getReportedUser(), lockedUser.getRoles().toArray(new Role[0]));
+        for(Role role : lockedUser.getRoles())
+            lockChannel.getGuild().removeRoleFromMember(lockedUser, role).complete();
+        lockChannel.createPermissionOverride(tempRole).setAllow(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND_IN_THREADS).setDeny(Permission.MESSAGE_HISTORY, Permission.MESSAGE_SEND).complete();
+        lockChannel.getGuild().addRoleToMember(lockedUser, tempRole).complete();
+        GuildThread lockThread = lockChannel.createThread(report.getReportedUser(), true).complete();
+        lockThread.sendMessage(lockedUser.getAsMention()).queue();
     }
+
     protected void logAction(String string) {
         TextChannel logNonReportRoom = getAPI().getTextChannelById(nonReportRoomId);
         switch (string) {
