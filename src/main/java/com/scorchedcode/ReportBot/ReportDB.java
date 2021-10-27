@@ -111,8 +111,8 @@ public class ReportDB {
         try {
             init = DriverManager.getConnection(ReportBot.sqlURL + "/gp_reports", ReportBot.dbUser, ReportBot.dbPassword);
             String insert = "INSERT INTO `MessageCache` (`MessageID`, `UserID`, `Content`) VALUES ('" + msgID +
-                    "', '" + userID + "', '" + content + "') ON DUPLICATE KEY UPDATE `UserID`"
-                    + " = '" + userID + "', `Content` = '" + content + "';";
+                    "', '" + userID + "', '" + content.replaceAll("'", "''") + "') ON DUPLICATE KEY UPDATE `UserID`"
+                    + " = '" + userID + "', `Content` = '" + content.replaceAll("'", "''") + "';";
             query = init.createStatement();
             query.execute(insert);
         } catch (SQLException throwables) {

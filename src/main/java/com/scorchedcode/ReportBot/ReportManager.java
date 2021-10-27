@@ -1,8 +1,7 @@
 package com.scorchedcode.ReportBot;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.UUID;
+import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class ReportManager {
@@ -32,11 +31,13 @@ public class ReportManager {
 
     public ArrayList<Integer> getReportCounts(String userID) {
         ArrayList<Integer> countList = new ArrayList<>();
-        countList.add(reports.stream().filter(warn -> warn.getResultAction() == ReportAction.WARN).filter(user -> user.getReportedUser().equals(userID)).toArray().length);
-        countList.add(reports.stream().filter(lock -> lock.getResultAction() == ReportAction.LOCK).filter(user -> user.getReportedUser().equals(userID)).toArray().length);
-        countList.add(reports.stream().filter(delete -> delete.getResultAction() == ReportAction.DELETE).filter(user -> user.getReportedUser().equals(userID)).toArray().length);
-        countList.add(reports.stream().filter(ban -> ban.getResultAction() == ReportAction.BAN).filter(user -> user.getReportedUser().equals(userID)).toArray().length);
-        countList.add(reports.stream().filter(complete -> complete.getResultAction() == ReportAction.COMPLETE).filter(user -> user.getReportedUser().equals(userID)).toArray().length);
+        List<Report> userOwnReports = new ArrayList<Report>();
+        Collections.addAll(userOwnReports, reports.stream().filter(own -> own.getReportedUser().equals(userID)).toArray(Report[]::new));
+        countList.add(userOwnReports.stream().filter(warn -> warn.getResultAction() == ReportAction.WARN).toArray().length);
+        countList.add(userOwnReports.stream().filter(lock -> lock.getResultAction() == ReportAction.LOCK).toArray().length);
+        countList.add(userOwnReports.stream().filter(delete -> delete.getResultAction() == ReportAction.DELETE).toArray().length);
+        countList.add(userOwnReports.stream().filter(ban -> ban.getResultAction() == ReportAction.BAN).toArray().length);
+        countList.add(userOwnReports.stream().filter(complete -> complete.getResultAction() == ReportAction.COMPLETE).toArray().length);
         return countList;
     }
 
@@ -52,6 +53,10 @@ public class ReportManager {
                     return report;
         }
         return null;
+    }
+
+    public Report getReport(String msgID) {
+        return reports.stream().filter(msg -> msg.getMessageID().equals(msgID)).findAny().get();
     }
 
     private Report getReport(String msgID, String channelID, String reportedUser) {

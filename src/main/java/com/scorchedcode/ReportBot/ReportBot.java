@@ -22,13 +22,15 @@ public class ReportBot {
     private String TOKEN;
     private String status;
     protected static String reportRoomId;
-    private String logRoomId;
-    protected static String nonReportRoomId;
+    protected static String logRoomId;
+    protected static String welcomeRoomId;
     private String lockRoomId;
+    private String modId;
     protected static HashMap<String, Role[]> lockedCache = new HashMap<>();
     protected static String sqlURL;
     protected static String dbUser;
     protected static String dbPassword;
+    private String welcomeMsg = "Welcome to the server!";
     private JDA api;
 
     private ReportBot() {
@@ -82,8 +84,9 @@ public class ReportBot {
             status = obj.getString("status");
             reportRoomId = obj.getString("report-room");
             logRoomId = obj.getString("log-room");
-            nonReportRoomId = obj.getString("non-report-log-room");
+            modId = obj.getString("mod-role-id");
             lockRoomId = obj.getString("lock-channel");
+            welcomeRoomId = obj.getString("welcome-channel");
             sqlURL = obj.getString("db-url");
             dbUser = obj.getString("db-user");
             dbPassword = obj.getString("db-password");
@@ -93,8 +96,8 @@ public class ReportBot {
             e.printStackTrace();
         }
         if (TOKEN == null || TOKEN.isEmpty() || status == null || status.isEmpty() || reportRoomId == null || reportRoomId.isEmpty() || logRoomId == null || logRoomId.isEmpty() ||
-                sqlURL == null || sqlURL.isEmpty() || dbUser == null || dbUser.isEmpty() || dbPassword == null || dbPassword.isEmpty() || nonReportRoomId == null || nonReportRoomId.isEmpty()
-                || lockRoomId == null || lockRoomId.isEmpty())
+                sqlURL == null || sqlURL.isEmpty() || dbUser == null || dbUser.isEmpty() || dbPassword == null || dbPassword.isEmpty() || lockRoomId == null || lockRoomId.isEmpty() ||
+            welcomeRoomId == null || welcomeRoomId.isEmpty() || modId == null || modId.isEmpty())
             System.exit(0);
     }
 
@@ -104,8 +107,19 @@ public class ReportBot {
 
     private void initializeCommands() {
         CommandData testCommand = new CommandData("history", "Displays discipline history for user");
-        testCommand.addOption(OptionType.STRING, "input", "String to echo back", true);
+        testCommand.addOption(OptionType.USER, "handle", "User's Discord handle to search", true);
+        CommandData banCommand = new CommandData("ban", "Ban a user, removing the last 7 days of post history");
+        banCommand.addOption(OptionType.USER, "handle", "User's Discord handle", true);
+        banCommand.addOption(OptionType.STRING, "reason", "Reason provided for ban", true);
+        CommandData warnCommand = new CommandData("warn", "Warn a user, sends a DM from the bot with a reason");
+        warnCommand.addOption(OptionType.USER, "handle", "User's Discord handle to search", true);
+        warnCommand.addOption(OptionType.STRING, "reason", "Reason provided for warning", true);
+        CommandData welcomeCommand = new CommandData("setwelcome", "Set the welcome message sent to the welcome channel when users join");
+        welcomeCommand.addOption(OptionType.STRING, "msg", "Message to be displayed on join. Use [u] to insert the user's @handle", true);
         getAPI().getGuilds().get(0).upsertCommand(testCommand).complete();
+        getAPI().getGuilds().get(0).upsertCommand(banCommand).complete();
+        getAPI().getGuilds().get(0).upsertCommand(warnCommand).complete();
+        getAPI().getGuilds().get(0).upsertCommand(welcomeCommand).complete();
     }
 
     public void generateReportAesthetic(ReportManager.Report rep) {
@@ -117,7 +131,7 @@ public class ReportBot {
                 .setTitle(null)
                 .setFooter(null)
                 .setTimestamp(reportMessage.getTimeCreated())
-                .setDescription(reportMessage.getContentDisplay());
+                .setDescription((reportMessage.getAttachments().size() == 1) ? (reportMessage.getAttachments().get(0).getUrl().concat(" ").concat(reportMessage.getContentDisplay())) : reportMessage.getContentDisplay());
         SelectionMenu actions = SelectionMenu.create("menu:reportbot:" + rep.getId())
                 .setPlaceholder("Choose an action to perform for this report.")
                 .setRequiredRange(1, 1)
@@ -132,17 +146,21 @@ public class ReportBot {
                         Button.of(ButtonStyle.PRIMARY, "history:" + rep.getReportedUser(), "View User History", Emoji.fromUnicode("\uD83D\uDCD6"))),
                 ActionRow.of(Button.danger("complete", "Under Review").asDisabled())).complete();
         rep.setReportID(msgReport.getId());
-        logAction(rep);
+        String[] reportingUsers = rep.getReportingUsers().toArray(new String[0]);
+        EmbedBuilder logEB = new EmbedBuilder();
+        logEB.setTitle("Report System")
+                .setColor(Color.CYAN)
+                .setDescription("Report Created for " + getAPI().getUserById(rep.getReportedUser()).getAsMention() + " \nReported by:\n" + getAPI().getUserById(reportingUsers[0]).getAsMention());
+                //.setDescription("Report Created for " + getAPI().getUserById(rep.getReportedUser()).getAsMention() + " \nReported by:\n" + getAPI().getUserById(reportingUsers[0]).getAsMention() + "\n" +
+                        //getAPI().getUserById(reportingUsers[1]).getAsMention() + "\n" + getAPI().getUserById(reportingUsers[2]).getAsMention());
+        getAPI().getTextChannelById(logRoomId).sendMessageEmbeds(logEB.build()).setActionRows(ActionRow.of(Button.of(ButtonStyle.LINK, getAPI().getTextChannelById(reportRoomId).getHistoryAround(rep.getReportID(), 5).complete().getMessageById(rep.getReportID()).getJumpUrl(), "View Report"))).queue();
+
     }
 
     public static ReportBot getInstance() {
         if (instance == null)
             instance = new ReportBot();
         return instance;
-    }
-
-    protected void warnBanUser(String userId, String warning, boolean ban) {
-
     }
 
     protected void lockUser(ReportManager.Report report) {
@@ -154,12 +172,12 @@ public class ReportBot {
             lockChannel.getGuild().removeRoleFromMember(lockedUser, role).complete();
         lockChannel.createPermissionOverride(tempRole).setAllow(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND_IN_THREADS).setDeny(Permission.MESSAGE_HISTORY, Permission.MESSAGE_SEND).complete();
         lockChannel.getGuild().addRoleToMember(lockedUser, tempRole).complete();
-        GuildThread lockThread = lockChannel.createThread(report.getReportedUser(), true).complete();
+        GuildThread lockThread = lockChannel.createThread(report.getMessageID(), true).complete();
         lockThread.sendMessage(lockedUser.getAsMention()).queue();
     }
 
     protected void logAction(String string) {
-        TextChannel logNonReportRoom = getAPI().getTextChannelById(nonReportRoomId);
+        TextChannel logNonReportRoom = getAPI().getTextChannelById(logRoomId);
         switch (string) {
             case "left":
                 break;
@@ -169,39 +187,23 @@ public class ReportBot {
 
     }
 
-    protected void logAction(ReportManager.Report report) {
-        TextChannel logRoom = getAPI().getTextChannelById(logRoomId);
-        String logAdmin = (report.getActionAdmin() != null) ? logRoom.getGuild().getMemberById(report.getActionAdmin()).getUser().getAsTag() : null;
-        String outputText = (report.getActionAdmin() != null) ? "Report-System\nFor: " + logRoom.getGuild().getMemberById(report.getReportedUser()).getUser().getAsTag() + "\nFrom: " +
-                logRoom.getGuild().getMemberById(report.getActionAdmin()).getUser().getAsTag() +"\nAction taken: "  : null;
-        switch(report.getResultAction()) {
-            case BAN:
-                outputText+="Banned by " + logAdmin + "\nReason: " + report.getResultReason();
-                break;
-            case WARN:
-                outputText+="Warned by " + logAdmin + "\nReason: " + report.getResultReason();
-                break;
-            case DELETE:
-                outputText+="Message deleted by " + logAdmin;
-                break;
-            case COMPLETE:
-                outputText+="Completed by " + logAdmin;
-                break;
-            case LOCK:
-                outputText+="Private discussion thread created by " + logAdmin;
-                break;
-            case UNKNOWN:
-                String reportingUsers = "";
-                for(String user : report.getReportingUsers())
-                    reportingUsers+=reportingUsers + logRoom.getGuild().getMemberById(user).getUser().getAsTag() + ",";
-                outputText = "Report-System\n Report generated for: " + logRoom.getGuild().getMemberById(report.getReportedUser()).getUser().getAsTag() + "\nReported by: " +
-                        reportingUsers.substring(0, reportingUsers.length()-1);
-                break;
-        }
-        logRoom.sendMessage(outputText).queue();
+    protected void setWelcomeMsg(String msg) {
+        welcomeMsg = msg;
+    }
+
+    protected String getWelcomeMsg() {
+        return welcomeMsg;
+    }
+
+    protected boolean isMod(String userID) {
+        return getAPI().getGuilds().get(0).getMemberById(userID).getRoles().stream().anyMatch(id -> id.getId().equals(modId)) || getAPI().getGuilds().get(0).getMemberById(userID).isOwner();
     }
 
     protected JDA getAPI() {
         return api;
+    }
+
+    public static String createJumpUrl(String channelID, String messageID) {
+        return "https://discordapp.com/channels/" + getInstance().getAPI().getGuilds().get(0).getId() + "/" + channelID + "/" + messageID;
     }
 }
