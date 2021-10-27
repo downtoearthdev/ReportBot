@@ -158,7 +158,7 @@ public class ReportManager {
 
         public void addReportingUser(String userID) {
             reportingUsers.add(userID);
-            if(reportingUsers.size() > 0 && reportID == null)
+            if((reportingUsers.size() == 3 || ReportBot.getInstance().isMod(userID)) && reportID == null)
                 publishReport(this);
         }
 

@@ -6,6 +6,7 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.channel.ChannelDeleteEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberRemoveEvent;
+import net.dv8tion.jda.api.events.guild.member.update.GuildMemberUpdateNicknameEvent;
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
 import net.dv8tion.jda.api.events.message.MessageDeleteEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -17,12 +18,26 @@ import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 
 public class UserActivityListener extends ListenerAdapter {
 
     protected static HashMap<String, ReportManager.Report> pendingMap = new HashMap<>();
+
+    @Override
+    public void onGuildMemberUpdateNickname(@NotNull GuildMemberUpdateNicknameEvent event) {
+        EmbedBuilder eb = new EmbedBuilder();
+        eb.setAuthor(event.getUser().getAsTag(), null, event.getUser().getAvatarUrl())
+                .setTitle("Nickname Change")
+                .setColor(Color.YELLOW)
+                .setFooter("User ID: " + event.getUser().getId())
+                .setTimestamp(LocalDateTime.now())
+                .addField("Old Nickname", (event.getOldNickname() == null) ? event.getUser().getName(): event.getOldNickname(), false)
+                .addField("New Nickname", (event.getNewNickname() == null) ? event.getUser().getName(): event.getNewNickname(), false);
+        event.getGuild().getTextChannelById(ReportBot.logRoomId).sendMessageEmbeds(eb.build()).queue();
+    }
 
     @Override
     public void onGuildMemberJoin(@NotNull GuildMemberJoinEvent event) {
@@ -82,7 +97,7 @@ public class UserActivityListener extends ListenerAdapter {
             }
         }
 
-        if (pendingMap.containsKey(event.getMember().getId()) && event.getChannel().getId().equals(ReportBot.reportRoomId)) {
+        if (pendingMap != null && !pendingMap.isEmpty() && pendingMap.containsKey(event.getMember().getId()) && event.getChannel().getId().equals(ReportBot.reportRoomId)) {
             ReportManager.Report rep = pendingMap.get(event.getMember().getId());
             Message msg = event.getJDA().getTextChannelById(ReportBot.reportRoomId).getHistoryAround(rep.getReportID(), 5).complete().getMessageById(rep.getReportID());
             if (pendingMap.get(event.getMember().getId()).getResultAction() == ReportAction.BAN) {
@@ -149,7 +164,7 @@ public class UserActivityListener extends ListenerAdapter {
         Member doomedMember = ReportBot.getInstance().getAPI().getGuilds().get(0).getMemberById(userId);
         if (ban) {
             String doomedMessage = "Hello, hope you're well. You are being banned from the r/GabbyPetito Discord Server for the following reason: " + warning + "\n" +
-                    "You may appeal this ban. Please visit the google form here to request consideration: (Ban Appeal Form)[https://docs.google.com/forms/d/e/1FAIpQLSdlPqMjaHE6I_-Ch3-YnNwFVbUoMgVAboK2bQrj7Bi1nOKojg/viewform?usp=sf_link]";
+                    "You may appeal this ban. Please visit the google form here to request consideration: https://docs.google.com/forms/d/e/1FAIpQLSdlPqMjaHE6I_-Ch3-YnNwFVbUoMgVAboK2bQrj7Bi1nOKojg/viewform?usp=sf_link";
             try {
                 PrivateChannel chan = doomedMember.getUser().openPrivateChannel().complete();
                 chan.sendMessage(doomedMessage).complete();
@@ -177,7 +192,7 @@ public class UserActivityListener extends ListenerAdapter {
         } else {
             try {
                 PrivateChannel chan = doomedMember.getUser().openPrivateChannel().complete();
-                chan.sendMessage(warning).complete();
+                chan.sendMessage("You have been warned on the r/Gabbypetito Discord for the following reason:\n" + warning).complete();
             } catch (Exception e) {
 
             }
@@ -186,15 +201,23 @@ public class UserActivityListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommand(@NotNull SlashCommandEvent event) {
-        if (ReportBot.getInstance().isMod(event.getMember().getId())) ;
-        {
+        //if (ReportBot.getInstance().isMod(event.getMember().getId())) ;
+        //{
             if (event.getName().equals("history")) {
                 if (event.getOption("handle") != null) {
                     event.deferReply(true).queue();
                     //event.replyEmbeds(eb.build()).setEphemeral(true).queue();
                     event.getHook().editOriginalEmbeds(ReportListener.getHistory(event.getOption("handle").getAsUser().getId())).queue();
                 }
-            } else if (event.getName().equals("ban")) {
+            }
+            else if(event.getName().equals("history-uid")) {
+                if (event.getOption("userid") != null) {
+                    event.deferReply(true).queue();
+                    //event.replyEmbeds(eb.build()).setEphemeral(true).queue();
+                    event.getHook().editOriginalEmbeds(ReportListener.getHistory(event.getOption("userid").getAsString())).queue();
+                }
+            }
+            else if (event.getName().equals("ban")) {
                 if (event.getOption("handle") != null && (event.getOption("reason") != null || !event.getOption("reason").getAsString().isEmpty())) {
                     warnBanUser(event.getOption("handle").getAsUser().getId(), event.getOption("reason").getAsString(), true);
                     event.reply("User has been banned from the server.").setEphemeral(true).queue();
@@ -210,7 +233,25 @@ public class UserActivityListener extends ListenerAdapter {
                     event.reply("Welcome message set!").setEphemeral(true).queue();
                 }
             }
-        }
+            else if(event.getName().equals("userinfo")) {
+                if(event.getOption("handle") != null) {
+                    EmbedBuilder eb = new EmbedBuilder();
+                    User user = event.getOption("handle").getAsUser();
+                    String roleString = "";
+                    for(Role role : event.getGuild().getMember(user).getRoles())
+                        roleString+=role.getAsMention()+"\n";
+                    eb.setAuthor(user.getAsTag(), null, null)
+                            .setTitle(null)
+                            .setThumbnail(user.getAvatarUrl())
+                            .setColor(new Color(0,87,77))
+                            .setDescription("ID: " + event.getOption("handle").getAsUser().getId() + "\n" +
+                                    "Roles (" + event.getGuild().getMember(user).getRoles().size() + " total):" + roleString + "\n" +
+                                    "Joined Server: " + event.getGuild().getMember(user).getTimeJoined().format(DateTimeFormatter.ofPattern("MM/dd/YYYY")) + "\n" +
+                                    "Joined Discord: " + user.getTimeCreated().format(DateTimeFormatter.ofPattern("MM/dd/YYYY")));
+                    event.replyEmbeds(eb.build()).setEphemeral(true).queue();
+                }
+            }
+        //}
     }
 
 }

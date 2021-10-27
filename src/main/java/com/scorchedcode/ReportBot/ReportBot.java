@@ -4,11 +4,13 @@ import net.dv8tion.jda.api.*;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
+import net.dv8tion.jda.api.interactions.commands.privileges.CommandPrivilege;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.Button;
 import net.dv8tion.jda.api.interactions.components.ButtonStyle;
 import net.dv8tion.jda.api.interactions.components.selections.SelectionMenu;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import org.json.JSONObject;
 
 import javax.security.auth.login.LoginException;
@@ -51,7 +53,7 @@ public class ReportBot {
             api = JDABuilder.create(TOKEN, GatewayIntent.DIRECT_MESSAGE_REACTIONS, GatewayIntent.DIRECT_MESSAGE_TYPING,
                     GatewayIntent.DIRECT_MESSAGES, GatewayIntent.GUILD_BANS, GatewayIntent.GUILD_EMOJIS, GatewayIntent.GUILD_INVITES,
                     GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.GUILD_MESSAGE_REACTIONS, GatewayIntent.GUILD_MESSAGE_TYPING,
-                    GatewayIntent.GUILD_VOICE_STATES, GatewayIntent.GUILD_WEBHOOKS).build().awaitReady();
+                    GatewayIntent.GUILD_VOICE_STATES, GatewayIntent.GUILD_WEBHOOKS).setMemberCachePolicy(MemberCachePolicy.ALL).build().awaitReady();
         } catch (LoginException | IllegalArgumentException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
@@ -108,6 +110,8 @@ public class ReportBot {
     private void initializeCommands() {
         CommandData testCommand = new CommandData("history", "Displays discipline history for user");
         testCommand.addOption(OptionType.USER, "handle", "User's Discord handle to search", true);
+        CommandData uidHistoryCommand = new CommandData("history-uid", "Displays discipline history for user");
+        uidHistoryCommand.addOption(OptionType.STRING, "userid", "User's Discord user ID to search", true);
         CommandData banCommand = new CommandData("ban", "Ban a user, removing the last 7 days of post history");
         banCommand.addOption(OptionType.USER, "handle", "User's Discord handle", true);
         banCommand.addOption(OptionType.STRING, "reason", "Reason provided for ban", true);
@@ -116,10 +120,14 @@ public class ReportBot {
         warnCommand.addOption(OptionType.STRING, "reason", "Reason provided for warning", true);
         CommandData welcomeCommand = new CommandData("setwelcome", "Set the welcome message sent to the welcome channel when users join");
         welcomeCommand.addOption(OptionType.STRING, "msg", "Message to be displayed on join. Use [u] to insert the user's @handle", true);
-        getAPI().getGuilds().get(0).upsertCommand(testCommand).complete();
-        getAPI().getGuilds().get(0).upsertCommand(banCommand).complete();
-        getAPI().getGuilds().get(0).upsertCommand(warnCommand).complete();
-        getAPI().getGuilds().get(0).upsertCommand(welcomeCommand).complete();
+        CommandData infoCommand = new CommandData("userinfo", "Displays information on user");
+        infoCommand.addOption(OptionType.USER, "handle", "User's Discord handle to search", true);
+        getAPI().getGuilds().get(0).upsertCommand(testCommand).complete().updatePrivileges(getAPI().getGuilds().get(0), CommandPrivilege.disable(getAPI().getGuilds().get(0).getPublicRole()), CommandPrivilege.enableRole(modId)).complete();
+        getAPI().getGuilds().get(0).upsertCommand(banCommand).complete().updatePrivileges(getAPI().getGuilds().get(0), CommandPrivilege.disable(getAPI().getGuilds().get(0).getPublicRole()), CommandPrivilege.enableRole(modId)).complete();
+        getAPI().getGuilds().get(0).upsertCommand(warnCommand).complete().updatePrivileges(getAPI().getGuilds().get(0), CommandPrivilege.disable(getAPI().getGuilds().get(0).getPublicRole()), CommandPrivilege.enableRole(modId)).complete();
+        getAPI().getGuilds().get(0).upsertCommand(welcomeCommand).complete().updatePrivileges(getAPI().getGuilds().get(0), CommandPrivilege.disable(getAPI().getGuilds().get(0).getPublicRole()), CommandPrivilege.enableRole(modId)).complete();
+        getAPI().getGuilds().get(0).upsertCommand(infoCommand).complete().updatePrivileges(getAPI().getGuilds().get(0), CommandPrivilege.disable(getAPI().getGuilds().get(0).getPublicRole()), CommandPrivilege.enableRole(modId)).complete();
+        getAPI().getGuilds().get(0).upsertCommand(uidHistoryCommand).complete().updatePrivileges(getAPI().getGuilds().get(0), CommandPrivilege.disable(getAPI().getGuilds().get(0).getPublicRole()), CommandPrivilege.enableRole(modId)).complete();
     }
 
     public void generateReportAesthetic(ReportManager.Report rep) {

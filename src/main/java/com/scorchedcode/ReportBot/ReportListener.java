@@ -39,10 +39,10 @@ public class ReportListener extends ListenerAdapter {
     public void onSelectionMenu(@NotNull SelectionMenuEvent event) {
         if (event.getComponent().getId().contains("menu:reportbot")) {
             ReportManager.Report report = ReportManager.getInstance().getReport(UUID.fromString(event.getComponent().getId().split(":")[2]));
-            String userName = event.getGuild().getMemberById(report.getReportedUser()).getUser().getAsTag();
             SelectOption option = event.getInteraction().getSelectedOptions().get(0);
+            String choice = (event.getGuild().getMemberById(report.getReportedUser()) != null) ? option.getValue() : "complete";
             Message msg = event.getGuild().getTextChannelById(report.getChannelID()).getHistoryAround(report.getMessageID(), 5).complete().getMessageById(report.getMessageID());
-            switch (option.getValue()) {
+            switch (choice) {
                 case "warn":
                     event.getMessage().editMessageComponents(ActionRow.of(SelectionMenu.create("disabled").setRequiredRange(1,1).addOption("something", "something").setDisabled(true).build()), ActionRow.of(event.getMessage().getActionRows().get(1).getButtons().get(0).asDisabled(),
                                     event.getMessage().getActionRows().get(1).getButtons().get(1).asEnabled()),
@@ -73,7 +73,7 @@ public class ReportListener extends ListenerAdapter {
                 case "lock":
                     event.getMessage().editMessageComponents(ActionRow.of(((SelectionMenu)event.getMessage().getActionRows().get(0).getComponents().get(0)).createCopy().build()), ActionRow.of(event.getMessage().getActionRows().get(1).getButtons().get(0).asEnabled(),
                                     event.getMessage().getActionRows().get(1).getButtons().get(1).asEnabled()),
-                            ActionRow.of(event.getMessage().getActionRows().get(2).getButtons().get(0).withStyle(ButtonStyle.PRIMARY).withLabel(userName + " currently locked by " + event.getUser().getAsTag()))).complete();
+                            ActionRow.of(event.getMessage().getActionRows().get(2).getButtons().get(0).withStyle(ButtonStyle.PRIMARY).withLabel(event.getGuild().getMemberById(report.getReportedUser()).getUser().getAsTag() + " currently locked by " + event.getUser().getAsTag()))).complete();
                     report.setResult(ReportAction.LOCK, event.getMember().getId(), null);
                     ReportBot.getInstance().lockUser(report);
                     break;
@@ -131,7 +131,7 @@ public class ReportListener extends ListenerAdapter {
         ArrayList<ReportManager.Report> reports = ReportManager.getInstance().getReports(user);
         String description = "";
         for (ReportManager.Report rep : reports)
-            description += "[Jump to report](" + ReportBot.createJumpUrl(ReportBot.reportRoomId, rep.getReportID()) + ")\n".concat(rep.getResultAction() == ReportAction.UNKNOWN ? "Under Review" : rep.getResultAction().getFancyPosessive() + " " + ReportBot.getInstance().getAPI().getGuilds().get(0).getMemberById(rep.getActionAdmin()).getUser().getAsTag()+"\n");
+            description += (rep.getResultAction() != ReportAction.COMPLETE) ? "[Jump to report](" + ReportBot.createJumpUrl(ReportBot.reportRoomId, rep.getReportID()) + ")\n" .concat(rep.getResultAction() == ReportAction.UNKNOWN ? "Under Review" : rep.getResultAction().getFancyPosessive() + " " + ReportBot.getInstance().getAPI().getGuilds().get(0).getMemberById(rep.getActionAdmin()).getUser().getAsTag() + "\n") : "";
         EmbedBuilder eb = new EmbedBuilder();
         eb.setAuthor((ReportBot.getInstance().getAPI().getUserById(user) == null) ? "Banned User" : ReportBot.getInstance().getAPI().getUserById(user).getAsTag(), null, (ReportBot.getInstance().getAPI().getUserById(user) == null) ? "https://banner2.cleanpng.com/20180406/rie/kisspng-emoji-eggplant-vegetable-food-text-messaging-eggplant-5ac7d3d9c1cc65.3692644815230453377938.jpg" : ReportBot.getInstance().getAPI().getUserById(user).getAvatarUrl())
                 .setTitle(null)

@@ -135,9 +135,9 @@ public class ReportDB {
             if (rep instanceof ReportManager.Report) {
                 String insert = "INSERT INTO `Reports` (`ReportID`, `PostedID`, `MessageID`, `ChannelID`, `AdminID`, `ReportedUserID`, `Action`, `Reason`) VALUES ('" + ((ReportManager.Report) rep).getId() +
                         "', '" + ((ReportManager.Report) rep).getReportID() + "', '" + ((ReportManager.Report) rep).getMessageID() + "', '" + ((ReportManager.Report) rep).getChannelID() + "', '" +
-                        ((ReportManager.Report) rep).getActionAdmin() + "', '" + ((ReportManager.Report) rep).getReportedUser() + "', '" + ((ReportManager.Report) rep).getResultAction().ordinal() + "', '" + ((ReportManager.Report) rep).getResultReason() + "') ON DUPLICATE KEY UPDATE `PostedID`"
+                        ((ReportManager.Report) rep).getActionAdmin() + "', '" + ((ReportManager.Report) rep).getReportedUser() + "', '" + ((ReportManager.Report) rep).getResultAction().ordinal() + "', '" + ((ReportManager.Report) rep).getResultReason().replaceAll("'", "''") + "') ON DUPLICATE KEY UPDATE `PostedID`"
                         + " = '" + ((ReportManager.Report) rep).getReportID() + "', `MessageID` = '" + ((ReportManager.Report) rep).getMessageID() + "', `ChannelID` = '" + ((ReportManager.Report) rep).getChannelID() + "', `AdminID` = '" +
-                        ((ReportManager.Report) rep).getActionAdmin() + "', `ReportedUserID` = '" + ((ReportManager.Report) rep).getReportedUser() + "', `Action` = '" + ((ReportManager.Report) rep).getResultAction().ordinal() + "', `Reason` = '" + ((ReportManager.Report) rep).getResultReason() + "';";
+                        ((ReportManager.Report) rep).getActionAdmin() + "', `ReportedUserID` = '" + ((ReportManager.Report) rep).getReportedUser() + "', `Action` = '" + ((ReportManager.Report) rep).getResultAction().ordinal() + "', `Reason` = '" + ((ReportManager.Report) rep).getResultReason().replaceAll("'", "''") + "';";
                 query = init.createStatement();
                 query.execute(insert);
             } else {
