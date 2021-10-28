@@ -18,6 +18,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
@@ -28,12 +29,14 @@ public class UserActivityListener extends ListenerAdapter {
 
     @Override
     public void onGuildMemberUpdateNickname(@NotNull GuildMemberUpdateNicknameEvent event) {
+        if(event.getNewNickname() != null)
+            ReportDB.getInstance().serializeNickname(event.getUser().getId(), event.getNewNickname());
         EmbedBuilder eb = new EmbedBuilder();
         eb.setAuthor(event.getUser().getAsTag(), null, event.getUser().getAvatarUrl())
                 .setTitle("Nickname Change")
                 .setColor(Color.YELLOW)
                 .setFooter("User ID: " + event.getUser().getId())
-                .setTimestamp(LocalDateTime.now())
+                .setTimestamp(OffsetDateTime.now())
                 .addField("Old Nickname", (event.getOldNickname() == null) ? event.getUser().getName(): event.getOldNickname(), false)
                 .addField("New Nickname", (event.getNewNickname() == null) ? event.getUser().getName(): event.getNewNickname(), false);
         event.getGuild().getTextChannelById(ReportBot.logRoomId).sendMessageEmbeds(eb.build()).queue();
@@ -80,7 +83,7 @@ public class UserActivityListener extends ListenerAdapter {
                     .setTitle(null)
                     .setColor(Color.MAGENTA)
                     .setFooter("User ID: " + foundData.get(1))
-                    .setTimestamp(LocalDateTime.now())
+                    .setTimestamp(OffsetDateTime.now())
                     .addField("Content", foundData.get(2), true)
                     .setDescription("Message deleted in " + event.getChannel().getAsMention());
             event.getGuild().getTextChannelById(ReportBot.logRoomId).sendMessageEmbeds(eb.build()).queue();
@@ -149,7 +152,7 @@ public class UserActivityListener extends ListenerAdapter {
                         .setTitle(null)
                         .setColor(Color.YELLOW)
                         .setFooter("User ID: " + foundData.get(1))
-                        .setTimestamp(LocalDateTime.now())
+                        .setTimestamp(OffsetDateTime.now())
                         .addField("Old Message", foundData.get(2), false)
                         .addField("New Message", contentMessage + " " + event.getMessage().getContentDisplay(), false)
                         .setDescription("Message edited in " + event.getChannel().getAsMention() + " - [Jump to message](" + event.getMessage().getJumpUrl() + ")");
@@ -220,11 +223,15 @@ public class UserActivityListener extends ListenerAdapter {
             else if (event.getName().equals("ban")) {
                 if (event.getOption("handle") != null && (event.getOption("reason") != null || !event.getOption("reason").getAsString().isEmpty())) {
                     warnBanUser(event.getOption("handle").getAsUser().getId(), event.getOption("reason").getAsString(), true);
+                    Message log = ReportListener.sendActionEmbed(event.getMember().getId(), event.getOption("handle").getAsUser().getId(), ReportAction.BAN, event.getOption("reason").getAsString());
+                    ReportDB.getInstance().serializeBanWarn(log.getId(), event.getMember().getId(), event.getOption("handle").getAsUser().getId(), ReportAction.BAN, event.getOption("reason").getAsString());
                     event.reply("User has been banned from the server.").setEphemeral(true).queue();
                 }
             } else if (event.getName().equals("warn")) {
                 if (event.getOption("handle") != null && (event.getOption("reason") != null || !event.getOption("reason").getAsString().isEmpty())) {
                     warnBanUser(event.getOption("handle").getAsUser().getId(), event.getOption("reason").getAsString(), false);
+                    Message log = ReportListener.sendActionEmbed(event.getMember().getId(), event.getOption("handle").getAsUser().getId(), ReportAction.WARN, event.getOption("reason").getAsString());
+                    ReportDB.getInstance().serializeBanWarn(log.getId(), event.getMember().getId(), event.getOption("handle").getAsUser().getId(), ReportAction.WARN, event.getOption("reason").getAsString());
                     event.reply("User has been warned. In the case the user's DMs aren't enabled, they will miss this warning.").setEphemeral(true).queue();
                 }
             } else if (event.getName().equals("setwelcome")) {
@@ -237,6 +244,7 @@ public class UserActivityListener extends ListenerAdapter {
                 if(event.getOption("handle") != null) {
                     EmbedBuilder eb = new EmbedBuilder();
                     User user = event.getOption("handle").getAsUser();
+                    String aliases = ReportDB.getInstance().retrieveNicknames(user.getId());
                     String roleString = "";
                     for(Role role : event.getGuild().getMember(user).getRoles())
                         roleString+=role.getAsMention()+"\n";
@@ -247,7 +255,8 @@ public class UserActivityListener extends ListenerAdapter {
                             .setDescription("ID: " + event.getOption("handle").getAsUser().getId() + "\n" +
                                     "Roles (" + event.getGuild().getMember(user).getRoles().size() + " total):" + roleString + "\n" +
                                     "Joined Server: " + event.getGuild().getMember(user).getTimeJoined().format(DateTimeFormatter.ofPattern("MM/dd/YYYY")) + "\n" +
-                                    "Joined Discord: " + user.getTimeCreated().format(DateTimeFormatter.ofPattern("MM/dd/YYYY")));
+                                    "Joined Discord: " + user.getTimeCreated().format(DateTimeFormatter.ofPattern("MM/dd/YYYY")) +
+                                    ((aliases != null) ? "\nAliases:\n" + aliases : ""));
                     event.replyEmbeds(eb.build()).setEphemeral(true).queue();
                 }
             }

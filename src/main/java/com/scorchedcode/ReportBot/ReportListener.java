@@ -15,6 +15,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.UUID;
 
 public class ReportListener extends ListenerAdapter {
@@ -89,6 +90,29 @@ public class ReportListener extends ListenerAdapter {
         }
     }
 
+    protected static Message sendActionEmbed(String adminID, String userID, ReportAction action, String reason) {
+        Color resolutionColor = Color.GRAY;
+        String actionText = "";
+        if(action == ReportAction.WARN) {
+            resolutionColor = new Color(127, 0, 100);
+            actionText = "Warning issued against ";
+        }
+        else if(action == ReportAction.BAN) {
+            resolutionColor = Color.RED;
+            actionText = "Ban issued against ";
+        }
+        EmbedBuilder eb = new EmbedBuilder();
+        eb.setTitle("Report System")
+                .setColor(resolutionColor)
+                .addField("Action:", actionText + ReportBot.getInstance().getAPI().getUserById(userID).getAsTag(), false);
+        if (action == ReportAction.BAN)
+            eb.addField("Ban reason", reason, false);
+        else if (action == ReportAction.WARN)
+            eb.addField("Warning reason", reason, false);
+        eb.setFooter(ReportBot.getInstance().getAPI().getUserById(adminID).getAsTag(), ReportBot.getInstance().getAPI().getUserById(adminID).getAvatarUrl());
+        return ReportBot.getInstance().getAPI().getTextChannelById(ReportBot.logRoomId).sendMessageEmbeds(eb.build()).complete();
+    }
+
     protected static void sendActionEmbed(ReportManager.Report report) {
         Color resolutionColor = Color.GRAY;
         String actionText = "";
@@ -129,9 +153,16 @@ public class ReportListener extends ListenerAdapter {
     protected static MessageEmbed getHistory(String user) {
         ArrayList<Integer> reportCounts = ReportManager.getInstance().getReportCounts(user);
         ArrayList<ReportManager.Report> reports = ReportManager.getInstance().getReports(user);
-        String description = "";
+        ArrayList<ArrayList<String>> commandBanWarns = ReportDB.getInstance().retrieveBanWarns(user);
+        String description = (reports.isEmpty()) ? "" : "Reports:\n";
         for (ReportManager.Report rep : reports)
             description += (rep.getResultAction() != ReportAction.COMPLETE) ? "[Jump to report](" + ReportBot.createJumpUrl(ReportBot.reportRoomId, rep.getReportID()) + ")\n" .concat(rep.getResultAction() == ReportAction.UNKNOWN ? "Under Review" : rep.getResultAction().getFancyPosessive() + " " + ReportBot.getInstance().getAPI().getGuilds().get(0).getMemberById(rep.getActionAdmin()).getUser().getAsTag() + "\n") : "";
+        if(!commandBanWarns.isEmpty()) {
+            description += "Command Actions:\n";
+            for(ArrayList<String> actions : commandBanWarns) {
+                description += "[Jump to log](" + ReportBot.createJumpUrl(ReportBot.logRoomId, actions.get(0)) + ")" + "\n" + ReportAction.values()[Integer.valueOf(actions.get(3))].getFancyPosessive() + " " + ReportBot.getInstance().getAPI().getUserById(actions.get(1)).getAsTag() + "\n";
+            }
+        }
         EmbedBuilder eb = new EmbedBuilder();
         eb.setAuthor((ReportBot.getInstance().getAPI().getUserById(user) == null) ? "Banned User" : ReportBot.getInstance().getAPI().getUserById(user).getAsTag(), null, (ReportBot.getInstance().getAPI().getUserById(user) == null) ? "https://banner2.cleanpng.com/20180406/rie/kisspng-emoji-eggplant-vegetable-food-text-messaging-eggplant-5ac7d3d9c1cc65.3692644815230453377938.jpg" : ReportBot.getInstance().getAPI().getUserById(user).getAvatarUrl())
                 .setTitle(null)
