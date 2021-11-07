@@ -41,7 +41,7 @@ public class ReportListener extends ListenerAdapter {
         if (event.getComponent().getId().contains("menu:reportbot")) {
             ReportManager.Report report = ReportManager.getInstance().getReport(UUID.fromString(event.getComponent().getId().split(":")[2]));
             SelectOption option = event.getInteraction().getSelectedOptions().get(0);
-            String choice = (event.getGuild().getMemberById(report.getReportedUser()) != null) ? option.getValue() : "complete";
+            String choice = (event.getGuild().retrieveMemberById(report.getReportedUser()).complete() != null) ? option.getValue() : "complete";
             Message msg = event.getGuild().getTextChannelById(report.getChannelID()).getHistoryAround(report.getMessageID(), 5).complete().getMessageById(report.getMessageID());
             switch (choice) {
                 case "warn":
@@ -74,8 +74,8 @@ public class ReportListener extends ListenerAdapter {
                 case "lock":
                     event.getMessage().editMessageComponents(ActionRow.of(((SelectionMenu)event.getMessage().getActionRows().get(0).getComponents().get(0)).createCopy().build()), ActionRow.of(event.getMessage().getActionRows().get(1).getButtons().get(0).asEnabled(),
                                     event.getMessage().getActionRows().get(1).getButtons().get(1).asEnabled()),
-                            ActionRow.of(event.getMessage().getActionRows().get(2).getButtons().get(0).withStyle(ButtonStyle.PRIMARY).withLabel(event.getGuild().getMemberById(report.getReportedUser()).getUser().getAsTag() + " currently locked by " + event.getUser().getAsTag()))).complete();
-                    report.setResult(ReportAction.LOCK, event.getMember().getId(), null);
+                            ActionRow.of(event.getMessage().getActionRows().get(2).getButtons().get(0).withStyle(ButtonStyle.PRIMARY).withLabel(event.getGuild().retrieveMemberById(report.getReportedUser()).complete().getUser().getAsTag() + " currently locked by " + event.getUser().getAsTag()))).complete();
+                    report.setResult(ReportAction.LOCK, event.getMember().getId(), "null");
                     ReportBot.getInstance().lockUser(report);
                     break;
                 case "complete":
@@ -83,7 +83,7 @@ public class ReportListener extends ListenerAdapter {
                     event.getMessage().editMessageComponents(ActionRow.of(event.getMessage().getActionRows().get(1).getButtons().get(0).asEnabled(),
                                     event.getMessage().getActionRows().get(1).getButtons().get(1).asEnabled()),
                             ActionRow.of(event.getMessage().getActionRows().get(2).getButtons().get(0).withStyle(ButtonStyle.SUCCESS).withLabel("Completed by " + event.getUser().getAsTag()))).complete();
-                    report.setResult(ReportAction.COMPLETE, event.getMember().getId(), null);
+                    report.setResult(ReportAction.COMPLETE, event.getUser().getId(), "null");
                     break;
             }
             sendActionEmbed(report);
@@ -156,7 +156,7 @@ public class ReportListener extends ListenerAdapter {
         ArrayList<ArrayList<String>> commandBanWarns = ReportDB.getInstance().retrieveBanWarns(user);
         String description = (reports.isEmpty()) ? "" : "Reports:\n";
         for (ReportManager.Report rep : reports)
-            description += (rep.getResultAction() != ReportAction.COMPLETE) ? "[Jump to report](" + ReportBot.createJumpUrl(ReportBot.reportRoomId, rep.getReportID()) + ")\n" .concat(rep.getResultAction() == ReportAction.UNKNOWN ? "Under Review" : rep.getResultAction().getFancyPosessive() + " " + ReportBot.getInstance().getAPI().getGuilds().get(0).getMemberById(rep.getActionAdmin()).getUser().getAsTag() + "\n") : "";
+            description += (rep.getResultAction() != ReportAction.COMPLETE) ? "[Jump to report](" + ReportBot.createJumpUrl(ReportBot.reportRoomId, rep.getReportID()) + ")\n" .concat(rep.getResultAction() == ReportAction.UNKNOWN ? "Under Review" : rep.getResultAction().getFancyPosessive() + " " + ReportBot.getInstance().getAPI().getGuilds().get(0).retrieveMemberById(rep.getActionAdmin()).complete().getUser().getAsTag() + "\n") : "";
         if(!commandBanWarns.isEmpty()) {
             description += "Command Actions:\n";
             for(ArrayList<String> actions : commandBanWarns) {

@@ -2,6 +2,7 @@ package com.scorchedcode.ReportBot;
 
 import net.dv8tion.jda.api.*;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.exceptions.ParsingException;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.privileges.CommandPrivilege;
@@ -18,6 +19,7 @@ import java.awt.*;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.logging.Logger;
 
 public class ReportBot {
     private static ReportBot instance;
@@ -50,14 +52,16 @@ public class ReportBot {
     private void initDiscordBot() {
         handleConfig();
         try {
-            api = JDABuilder.create(TOKEN, GatewayIntent.DIRECT_MESSAGE_REACTIONS, GatewayIntent.DIRECT_MESSAGE_TYPING,
-                    GatewayIntent.DIRECT_MESSAGES, GatewayIntent.GUILD_BANS, GatewayIntent.GUILD_EMOJIS, GatewayIntent.GUILD_INVITES,
-                    GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.GUILD_MESSAGE_REACTIONS, GatewayIntent.GUILD_MESSAGE_TYPING,
-                    GatewayIntent.GUILD_VOICE_STATES, GatewayIntent.GUILD_WEBHOOKS).setMemberCachePolicy(MemberCachePolicy.ALL).build().awaitReady();
+            api = JDABuilder.createDefault(TOKEN, GatewayIntent.DIRECT_MESSAGE_REACTIONS, GatewayIntent.DIRECT_MESSAGE_TYPING,
+                    GatewayIntent.DIRECT_MESSAGES, GatewayIntent.GUILD_BANS, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.GUILD_MESSAGE_REACTIONS, GatewayIntent.GUILD_WEBHOOKS)
+                    .build().awaitReady();
         } catch (LoginException | IllegalArgumentException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
             e.printStackTrace();
+        } catch (ParsingException e) {
+            e.printStackTrace();
+            System.exit(0);
         }
         getAPI().addEventListener(new ReactionListener());
         getAPI().addEventListener(new ReportListener());
@@ -155,10 +159,13 @@ public class ReportBot {
                 ActionRow.of(Button.danger("complete", "Under Review").asDisabled())).complete();
         rep.setReportID(msgReport.getId());
         String[] reportingUsers = rep.getReportingUsers().toArray(new String[0]);
+        String repUsers = "";
+        for(int x = 0; x < reportingUsers.length; x++)
+            repUsers+=getAPI().getUserById(reportingUsers[x]).getAsMention();
         EmbedBuilder logEB = new EmbedBuilder();
         logEB.setTitle("Report System")
                 .setColor(Color.CYAN)
-                .setDescription("Report Created for " + getAPI().getUserById(rep.getReportedUser()).getAsMention() + " \nReported by:\n" + getAPI().getUserById(reportingUsers[0]).getAsMention());
+                .setDescription("Report Created for " + getAPI().getUserById(rep.getReportedUser()).getAsMention() + " \nReported by:\n" + repUsers);
                 //.setDescription("Report Created for " + getAPI().getUserById(rep.getReportedUser()).getAsMention() + " \nReported by:\n" + getAPI().getUserById(reportingUsers[0]).getAsMention() + "\n" +
                         //getAPI().getUserById(reportingUsers[1]).getAsMention() + "\n" + getAPI().getUserById(reportingUsers[2]).getAsMention());
         getAPI().getTextChannelById(logRoomId).sendMessageEmbeds(logEB.build()).setActionRows(ActionRow.of(Button.of(ButtonStyle.LINK, getAPI().getTextChannelById(reportRoomId).getHistoryAround(rep.getReportID(), 5).complete().getMessageById(rep.getReportID()).getJumpUrl(), "View Report"))).queue();
@@ -173,15 +180,15 @@ public class ReportBot {
 
     protected void lockUser(ReportManager.Report report) {
         TextChannel lockChannel = getAPI().getTextChannelById(lockRoomId);
-        Member lockedUser = lockChannel.getGuild().getMemberById(report.getReportedUser());
+        Member lockedUser = lockChannel.getGuild().retrieveMemberById(report.getReportedUser()).complete();
         Role tempRole = lockChannel.getGuild().createRole().setColor(Color.RED).setName(lockedUser.getEffectiveName()).complete();
         lockedCache.put(report.getReportedUser(), lockedUser.getRoles().toArray(new Role[0]));
         for(Role role : lockedUser.getRoles())
             lockChannel.getGuild().removeRoleFromMember(lockedUser, role).complete();
         lockChannel.createPermissionOverride(tempRole).setAllow(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND_IN_THREADS).setDeny(Permission.MESSAGE_HISTORY, Permission.MESSAGE_SEND).complete();
         lockChannel.getGuild().addRoleToMember(lockedUser, tempRole).complete();
-        GuildThread lockThread = lockChannel.createThread(report.getMessageID(), true).complete();
-        lockThread.sendMessage(lockedUser.getAsMention()).queue();
+        ThreadChannel lockThread = lockChannel.createThreadChannel(report.getMessageID(), true).complete();
+        lockThread.sendMessage(lockedUser.getAsMention() + " " + getAPI().getRoleById(modId).getAsMention()).queue();
     }
 
     protected void logAction(String string) {
@@ -204,7 +211,7 @@ public class ReportBot {
     }
 
     protected boolean isMod(String userID) {
-        return getAPI().getGuilds().get(0).getMemberById(userID).getRoles().stream().anyMatch(id -> id.getId().equals(modId)) || getAPI().getGuilds().get(0).getMemberById(userID).isOwner();
+        return getAPI().getGuilds().get(0).retrieveMemberById(userID).complete().getRoles().stream().anyMatch(id -> id.getId().equals(modId)) || getAPI().getGuilds().get(0).getMemberById(userID).isOwner();
     }
 
     protected JDA getAPI() {

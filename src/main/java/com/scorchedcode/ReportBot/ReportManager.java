@@ -87,6 +87,9 @@ public class ReportManager {
             this.messageID = msgID;
             this.channelID = channelID;
             this.reportedUser = reportedUser;
+            this.actionAdmin = "null";
+            this.reportID = "null";
+            this.banWarnReason = "null";
             this.id = UUID.randomUUID();
             reports.add(this);
             serialize();
@@ -158,7 +161,7 @@ public class ReportManager {
 
         public void addReportingUser(String userID) {
             reportingUsers.add(userID);
-            if((reportingUsers.size() == 3 || ReportBot.getInstance().isMod(userID)) && reportID == null)
+            //if(((reportingUsers.size() == 3 || ReportBot.getInstance().isMod(userID))) && reportID == null)
                 publishReport(this);
         }
 

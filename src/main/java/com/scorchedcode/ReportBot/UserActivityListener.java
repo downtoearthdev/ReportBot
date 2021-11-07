@@ -49,7 +49,7 @@ public class UserActivityListener extends ListenerAdapter {
 
     @Override
     public void onGuildMemberRemove(@NotNull GuildMemberRemoveEvent event) {
-        ReportBot.getInstance().logAction(event.getMember().getAsMention() + " has left.");
+        ReportBot.getInstance().logAction(event.getUser().getAsTag() + " has left.");
     }
 
     @Override
@@ -58,7 +58,7 @@ public class UserActivityListener extends ListenerAdapter {
             ReportManager.Report rep = ReportManager.getInstance().getReport(event.getChannel().getName());
             if (rep != null && ReportBot.lockedCache.containsKey(rep.getReportedUser())) {
                 Role[] roles = ReportBot.lockedCache.get(rep.getReportedUser());
-                Member lockedMember = event.getJDA().getGuilds().get(0).getMemberById(rep.getReportedUser());
+                Member lockedMember = event.getJDA().getGuilds().get(0).retrieveMemberById(rep.getReportedUser()).complete();
                 Role tempRole = lockedMember.getRoles().get(0);
                 event.getJDA().getGuilds().get(0).removeRoleFromMember(lockedMember, lockedMember.getRoles().get(0)).complete();
                 tempRole.delete().complete();
@@ -126,7 +126,7 @@ public class UserActivityListener extends ListenerAdapter {
             }
         }
 
-        if (!event.getMember().getId().equals(ReportBot.getInstance().getAPI().getSelfUser().getId())) {
+        if (!event.isWebhookMessage() && !event.getMember().getId().equals(ReportBot.getInstance().getAPI().getSelfUser().getId())) {
             String contentMessage = "";
             if (event.getMessage().getAttachments().size() == 1) {
                 List<Message.Attachment> files = event.getMessage().getAttachments();
@@ -171,9 +171,9 @@ public class UserActivityListener extends ListenerAdapter {
             try {
                 PrivateChannel chan = doomedMember.getUser().openPrivateChannel().complete();
                 chan.sendMessage(doomedMessage).complete();
-                doomedMember.ban(0, warning).complete(); //Set deldays to 5 for production
+                doomedMember.ban(7, warning).complete(); //Set deldays to 5 for production
             } catch (Exception e) {
-                TextChannel tempChannel = ReportBot.getInstance().getAPI().getGuilds().get(0).createTextChannel(userId).complete();
+                TextChannel tempChannel = ReportBot.getInstance().getAPI().getGuilds().get(0).getCategoryById("903490755128078346").createTextChannel(userId).complete();
                 Role tempRole = doomedMember.getGuild().createRole().setColor(Color.GRAY).setName(userId).complete();
                 tempChannel.createPermissionOverride(tempRole).setDeny(Permission.ALL_PERMISSIONS).complete();
                 tempChannel.getManager().putRolePermissionOverride(tempRole.getIdLong(), Arrays.asList(Permission.VIEW_CHANNEL, Permission.MESSAGE_HISTORY), null).putRolePermissionOverride(tempChannel.getGuild().getPublicRole().getIdLong(), null, Arrays.asList(Permission.VIEW_CHANNEL)).complete();
@@ -186,11 +186,11 @@ public class UserActivityListener extends ListenerAdapter {
                 botTimer.schedule(new TimerTask() {
                     @Override
                     public void run() {
-                        doomedMember.ban(0, warning).complete();
+                        doomedMember.ban(7, warning).complete();
                         tempChannel.delete().complete();
                         tempRole.delete().complete();
                     }
-                }, 10000L);
+                }, 300000L);
             }
         } else {
             try {
@@ -246,15 +246,15 @@ public class UserActivityListener extends ListenerAdapter {
                     User user = event.getOption("handle").getAsUser();
                     String aliases = ReportDB.getInstance().retrieveNicknames(user.getId());
                     String roleString = "";
-                    for(Role role : event.getGuild().getMember(user).getRoles())
+                    for(Role role : event.getGuild().retrieveMemberById(user.getId()).complete().getRoles())
                         roleString+=role.getAsMention()+"\n";
                     eb.setAuthor(user.getAsTag(), null, null)
                             .setTitle(null)
                             .setThumbnail(user.getAvatarUrl())
                             .setColor(new Color(0,87,77))
                             .setDescription("ID: " + event.getOption("handle").getAsUser().getId() + "\n" +
-                                    "Roles (" + event.getGuild().getMember(user).getRoles().size() + " total):" + roleString + "\n" +
-                                    "Joined Server: " + event.getGuild().getMember(user).getTimeJoined().format(DateTimeFormatter.ofPattern("MM/dd/YYYY")) + "\n" +
+                                    "Roles (" + event.getGuild().retrieveMemberById(user.getId()).complete().getRoles().size() + " total):" + roleString + "\n" +
+                                    "Joined Server: " + event.getGuild().retrieveMemberById(user.getId()).complete().getTimeJoined().format(DateTimeFormatter.ofPattern("MM/dd/YYYY")) + "\n" +
                                     "Joined Discord: " + user.getTimeCreated().format(DateTimeFormatter.ofPattern("MM/dd/YYYY")) +
                                     ((aliases != null) ? "\nAliases:\n" + aliases : ""));
                     event.replyEmbeds(eb.build()).setEphemeral(true).queue();
