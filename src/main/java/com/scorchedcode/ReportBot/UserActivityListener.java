@@ -68,7 +68,7 @@ public class UserActivityListener extends ListenerAdapter {
                 Message reportMessage = event.getJDA().getTextChannelById(ReportBot.reportRoomId).getHistoryAround(rep.getReportID(), 5).complete().getMessageById(rep.getReportID());
                 reportMessage.editMessageComponents(ActionRow.of(reportMessage.getActionRows().get(1).getButtons().get(0).asEnabled(),
                                 reportMessage.getActionRows().get(1).getButtons().get(1).asEnabled()),
-                        ActionRow.of(reportMessage.getActionRows().get(2).getButtons().get(0).withStyle(ButtonStyle.SUCCESS).withLabel("Locked and completed by " + event.getJDA().getUserById(rep.getActionAdmin()).getAsTag()))).complete();
+                        ActionRow.of(reportMessage.getActionRows().get(2).getButtons().get(0).withStyle(ButtonStyle.SUCCESS).withLabel("Locked and completed by " + event.getJDA().retrieveUserById(rep.getActionAdmin()).complete().getAsTag()))).complete();
             }
         }
     }
@@ -79,7 +79,7 @@ public class UserActivityListener extends ListenerAdapter {
         ArrayList<String> foundData = ReportDB.getInstance().retrieveMessage(msgID);
         if (foundData != null) {
             EmbedBuilder eb = new EmbedBuilder();
-            eb.setAuthor(event.getJDA().getUserById(foundData.get(1)).getAsTag(), null, event.getJDA().getUserById(foundData.get(1)).getAvatarUrl())
+            eb.setAuthor(event.getJDA().retrieveUserById(foundData.get(1)).complete().getAsTag(), null, event.getJDA().retrieveUserById(foundData.get(1)).complete().getAvatarUrl())
                     .setTitle(null)
                     .setColor(Color.MAGENTA)
                     .setFooter("User ID: " + foundData.get(1))
@@ -148,7 +148,7 @@ public class UserActivityListener extends ListenerAdapter {
                     contentMessage = files.get(0).getUrl();
                 }
                 EmbedBuilder eb = new EmbedBuilder();
-                eb.setAuthor(event.getJDA().getUserById(foundData.get(1)).getAsTag(), null, event.getJDA().getUserById(foundData.get(1)).getAvatarUrl())
+                eb.setAuthor(event.getJDA().retrieveUserById(foundData.get(1)).complete().getAsTag(), null, event.getJDA().retrieveUserById(foundData.get(1)).complete().getAvatarUrl())
                         .setTitle(null)
                         .setColor(Color.YELLOW)
                         .setFooter("User ID: " + foundData.get(1))

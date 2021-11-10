@@ -161,7 +161,7 @@ public class ReportBot {
         String[] reportingUsers = rep.getReportingUsers().toArray(new String[0]);
         String repUsers = "";
         for(int x = 0; x < reportingUsers.length; x++)
-            repUsers+=getAPI().getUserById(reportingUsers[x]).getAsMention();
+            repUsers+=getAPI().retrieveUserById(reportingUsers[x]).complete().getAsMention();
         EmbedBuilder logEB = new EmbedBuilder();
         logEB.setTitle("Report System")
                 .setColor(Color.CYAN)
